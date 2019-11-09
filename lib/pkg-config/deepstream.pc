@@ -1,0 +1,12 @@
+prefix=/usr/local/deepstream-4.0
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+toolsdir=${exec_prefix}/bin
+
+Name: NVIDIA DeepStream SDK
+Description: NVIDIA DeepStream SDK
+Version: 4.0
+Requires: gstreamer-1.0 >= 1.14.1
+Libs: -L${libdir} LIB_LIST -Wl,-rpath,${libdir}
+Cflags: -I${includedir}
