@@ -1,25 +1,3 @@
-/*
- * Copyright (c) 2018-2019, NVIDIA CORPORATION. All rights reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the "Software"),
- * to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense,
- * and/or sell copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
- * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
- * DEALINGS IN THE SOFTWARE.
- */
-
 #include <gst/gst.h>
 #include <glib.h>
 
@@ -27,12 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <time.h>
 #include "gstnvdsmeta.h"
 
 #define PGIE_CONFIG_FILE  "../config_infer_primary_yoloV3.txt"
-//#define SGIE1_CONFIG_FILE "dstest2_sgie1_config.txt"
-//#define SGIE2_CONFIG_FILE "dstest2_sgie2_config.txt"
-//#define SGIE3_CONFIG_FILE "dstest2_sgie3_config.txt"
 #define MAX_DISPLAY_LEN 128
 
 #define TRACKER_CONFIG_FILE "dstest2_tracker_config.txt"
@@ -52,21 +28,6 @@
 #define MUXER_BATCH_TIMEOUT_USEC 4000000
 
 gint frame_number = 0;
-/* These are the strings of the labels for the respective models */
-//gchar sgie1_classes_str[12][32] = {"black", "blue", "brown", "gold", "green",
-//                                   "grey", "maroon", "orange", "red", "silver", "white", "yellow"
-//};
-
-//gchar sgie2_classes_str[20][32] =
-//        {"Acura", "Audi", "BMW", "Chevrolet", "Chrysler",
-//         "Dodge", "Ford", "GMC", "Honda", "Hyundai", "Infiniti", "Jeep", "Kia",
-//         "Lexus", "Mazda", "Mercedes", "Nissan",
-//         "Subaru", "Toyota", "Volkswagen"
-//        };
-
-//gchar sgie3_classes_str[6][32] = {"coupe", "largevehicle", "sedan", "suv",
-//                                  "truck", "van"
-//};
 
 gchar pgie_classes_str[80][32] =
         {"Person", "Bicycle", "Car", "Motorbike", "aeroplane", "Bus",
@@ -83,15 +44,6 @@ gchar pgie_classes_str[80][32] =
          "laptop", "mouse", "remote", "keyboard", "cell phone", "microwave",
          "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase",
          "scissors", "teddy bear", "hair drier", "toothbrush"};
-
-/* gie_unique_id is one of the properties in the above dstest2_sgiex_config.txt
- * files. These should be unique and known when we want to parse the Metadata
- * respective to the sgie labels. Ideally these should be read from the config
- * files but for brevity we ensure they are same. */
-
-//guint sgie1_unique_id = 2;
-//guint sgie2_unique_id = 3;
-//guint sgie3_unique_id = 4;
 
 /* This is the buffer probe function that we have registered on the sink pad
  * of the OSD element. All the infer elements in the pipeline shall attach
@@ -111,12 +63,10 @@ osd_sink_pad_buffer_probe(GstPad *pad, GstPadProbeInfo *info,
 
     NvDsBatchMeta *batch_meta = gst_buffer_get_nvds_batch_meta(buf);
 
-    for (l_frame = batch_meta->frame_meta_list; l_frame != NULL;
-         l_frame = l_frame->next) {
+    for (l_frame = batch_meta->frame_meta_list; l_frame != NULL; l_frame = l_frame->next) {
         NvDsFrameMeta *frame_meta = (NvDsFrameMeta * )(l_frame->data);
         int offset = 0;
-        for (l_obj = frame_meta->obj_meta_list; l_obj != NULL;
-             l_obj = l_obj->next) {
+        for (l_obj = frame_meta->obj_meta_list; l_obj != NULL; l_obj = l_obj->next) {
             obj_meta = (NvDsObjectMeta * )(l_obj->data);
             if (obj_meta->class_id == PGIE_CLASS_ID_VEHICLE) {
                 vehicle_count++;
@@ -314,10 +264,14 @@ set_tracker_properties(GstElement *nvtracker) {
     return ret;
 }
 
+static void cb_identity_handoff(GstElement *identity, GstBuffer *buffer, gpointer *data) {
+    g_printerr("FPS ");
+}
+
 int main(int argc, char *argv[]) {
     GMainLoop *loop = NULL;
     GstElement *pipeline = NULL, *source = NULL, *h264parser = NULL,
-            *decoder = NULL, *streammux = NULL, *sink = NULL, *pgie = NULL, *nvvidconv = NULL,
+            *decoder = NULL, *streammux = NULL, *sink = NULL, *identity = NULL, *pgie = NULL, *nvvidconv = NULL,
             *nvosd = NULL, *nvtracker = NULL;
     g_print("With tracker\n");
 #ifdef PLATFORM_TEGRA
@@ -367,14 +321,6 @@ int main(int argc, char *argv[]) {
     /* We need to have a tracker to track the identified objects */
     nvtracker = gst_element_factory_make("nvtracker", "tracker");
 
-    /* We need three secondary gies so lets create 3 more instances of
-       nvinfer */
-//    sgie1 = gst_element_factory_make("nvinfer", "secondary1-nvinference-engine");
-
-//    sgie2 = gst_element_factory_make("nvinfer", "secondary2-nvinference-engine");
-
-    //sgie3 = gst_element_factory_make("nvinfer", "secondary3-nvinference-engine");
-
     /* Use convertor to convert from NV12 to RGBA as required by nvosd */
     nvvidconv = gst_element_factory_make("nvvideoconvert", "nvvideo-converter");
 
@@ -386,6 +332,8 @@ int main(int argc, char *argv[]) {
     transform = gst_element_factory_make ("nvegltransform", "nvegl-transform");
 #endif
     sink = gst_element_factory_make("nveglglessink", "nvvideo-renderer");
+
+    identity = gst_element_factory_make("identity", "identity");
 
     if (!source || !h264parser || !decoder || !pgie ||
         !nvtracker || !nvvidconv || !nvosd || !sink) {
@@ -400,6 +348,10 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
+    g_object_set(G_OBJECT(identity), "signal-handoffs", TRUE,
+                 "drop-buffer-flags", GST_BUFFER_FLAG_DELTA_UNIT, NULL);
+    g_signal_connect(identity, "handoff", cb_identity_handoff, NULL);
+
     /* Set the input filename to the source element */
     g_object_set(G_OBJECT(source), "location", argv[1], NULL);
 
@@ -410,9 +362,6 @@ int main(int argc, char *argv[]) {
     /* Set all the necessary properties of the nvinfer element,
      * the necessary ones are : */
     g_object_set(G_OBJECT(pgie), "config-file-path", PGIE_CONFIG_FILE, NULL);
-//    g_object_set(G_OBJECT(sgie1), "config-file-path", SGIE1_CONFIG_FILE, NULL);
-//    g_object_set(G_OBJECT(sgie2), "config-file-path", SGIE2_CONFIG_FILE, NULL);
-//    g_object_set(G_OBJECT(sgie3), "config-file-path", SGIE3_CONFIG_FILE, NULL);
 
     /* Set necessary properties of the tracker element. */
     if (!set_tracker_properties(nvtracker)) {
@@ -430,10 +379,10 @@ int main(int argc, char *argv[]) {
     /* decoder | pgie1 | nvtracker | sgie1 | sgie2 | sgie3 | etc.. */
 #ifdef PLATFORM_TEGRA
     gst_bin_add_many (GST_BIN (pipeline),
-        source, h264parser, decoder, streammux, pgie, nvtracker, nvvidconv, nvosd, transform, sink, NULL);
+        source, h264parser, decoder, streammux, pgie, nvtracker, nvvidconv, nvosd, transform, sink, identity, NULL);
 #else
     gst_bin_add_many(GST_BIN(pipeline), source, h264parser, decoder, streammux, pgie, nvtracker,
-                     nvvidconv, nvosd, sink, NULL);
+                     nvvidconv, nvosd, sink, identity, NULL);
 #endif
 
     GstPad *sinkpad, *srcpad;
@@ -467,12 +416,12 @@ int main(int argc, char *argv[]) {
     }
 
 #ifdef PLATFORM_TEGRA
-    if (!gst_element_link_many (streammux, pgie, nvtracker, nvvidconv, nvosd, transform, sink, NULL)) {
+    if (!gst_element_link_many (streammux, pgie, nvtracker, nvvidconv, nvosd, transform, identity, sink, NULL)) {
       g_printerr ("Elements could not be linked. Exiting.\n");
       return -1;
     }
 #else
-    if (!gst_element_link_many(streammux, pgie, nvtracker, nvvidconv, nvosd, sink, NULL)) {
+    if (!gst_element_link_many(streammux, pgie, nvtracker, nvvidconv, nvosd, identity, sink, NULL)) {
         g_printerr("Elements could not be linked. Exiting.\n");
         return -1;
     }
