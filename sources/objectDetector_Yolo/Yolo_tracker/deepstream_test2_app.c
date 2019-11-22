@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include <time.h>
+#include <sys/time.h>
 #include "gstnvdsmeta.h"
 
 #define PGIE_CONFIG_FILE  "../config_infer_primary_yoloV3.txt"
@@ -264,8 +265,30 @@ set_tracker_properties(GstElement *nvtracker) {
     return ret;
 }
 
+static double start_time = -1.0;
+static gint fps_count = 0;
+
 static void cb_identity_handoff(GstElement *identity, GstBuffer *buffer, gpointer *data) {
-    g_printerr("FPS ");
+    struct timeval  tv;
+    gettimeofday(&tv, NULL);
+
+    double cur_time = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+
+    fps_count++;
+
+    if(start_time < 0) {
+        g_printerr("[*] WAHHHHHHHHHHH\n");
+        start_time = cur_time;
+        return;
+    }
+
+    if((cur_time - start_time) >= 1000.0) {
+        g_printerr("[*] cur = %f\n", cur_time);
+        g_printerr("[*] start = %f\n", start_time);
+        g_printerr("[*] FPS = %d\n", fps_count);
+        fps_count = 0;
+        start_time = cur_time;
+    }
 }
 
 int main(int argc, char *argv[]) {
