@@ -107,10 +107,10 @@ osd_sink_pad_buffer_probe(GstPad *pad, GstPadProbeInfo *info,
         nvds_add_display_meta_to_frame(frame_meta, display_meta);
     }
 
-    g_print("Frame Number = %d Number of objects = %d "
-            "Vehicle Count = %d Person Count = %d\n",
-            frame_number, num_rects, vehicle_count, person_count);
-    frame_number++;
+//    g_print("Frame Number = %d Number of objects = %d "
+//            "Vehicle Count = %d Person Count = %d\n",
+//            frame_number, num_rects, vehicle_count, person_count);
+//    frame_number++;
     return GST_PAD_PROBE_OK;
 }
 
@@ -277,14 +277,11 @@ static void cb_identity_handoff(GstElement *identity, GstBuffer *buffer, gpointe
     fps_count++;
 
     if(start_time < 0) {
-        g_printerr("[*] WAHHHHHHHHHHH\n");
         start_time = cur_time;
         return;
     }
 
     if((cur_time - start_time) >= 1000.0) {
-        g_printerr("[*] cur = %f\n", cur_time);
-        g_printerr("[*] start = %f\n", start_time);
         g_printerr("[*] FPS = %d\n", fps_count);
         fps_count = 0;
         start_time = cur_time;
