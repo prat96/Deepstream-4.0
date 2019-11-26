@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include <time.h>
 #include <sys/time.h>
 #include "gstnvdsmeta.h"
@@ -70,10 +69,12 @@ osd_sink_pad_buffer_probe(GstPad *pad, GstPadProbeInfo *info,
         for (l_obj = frame_meta->obj_meta_list; l_obj != NULL; l_obj = l_obj->next) {
             obj_meta = (NvDsObjectMeta * )(l_obj->data);
             if (obj_meta->class_id == PGIE_CLASS_ID_VEHICLE) {
+                g_print("%d, %d, %d, %d\n", obj_meta->rect_params.left, obj_meta->rect_params.top, obj_meta->rect_params.width, obj_meta->rect_params.height);
                 vehicle_count++;
                 num_rects++;
             }
             if (obj_meta->class_id == PGIE_CLASS_ID_PERSON) {
+                g_print("%d, %d, %d, %d\n", obj_meta->rect_params.left, obj_meta->rect_params.top, obj_meta->rect_params.width, obj_meta->rect_params.height);
                 person_count++;
                 num_rects++;
             }
@@ -111,6 +112,7 @@ osd_sink_pad_buffer_probe(GstPad *pad, GstPadProbeInfo *info,
 //            "Vehicle Count = %d Person Count = %d\n",
 //            frame_number, num_rects, vehicle_count, person_count);
 //    frame_number++;
+    g_print("NEXT FRAME \n");
     return GST_PAD_PROBE_OK;
 }
 
